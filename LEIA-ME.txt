@@ -1,0 +1,28 @@
+﻿TWITCH MINER - COMO INSTALAR
+============================
+
+Você não precisa instalar nada antes. Basta ter Windows 10 ou 11 e internet.
+
+1. Extraia a pasta do programa para um lugar fixo (por exemplo, Documentos).
+   Não rode direto de dentro do arquivo .zip.
+
+2. Dê dois cliques em "Instalar.bat".
+   - Se aparecer "O Windows protegeu o computador", clique em "Mais informações"
+     e depois em "Executar assim mesmo".
+   - Espere terminar (leva alguns minutos). O painel abre sozinho no navegador.
+
+3. No painel:
+   - Configurações: digite seu usuário da Twitch e clique em Salvar.
+   - Canais: adicione os canais que você quer minerar e salve.
+   - Clique em "Iniciar". Na primeira vez aparece um código: abra
+     twitch.tv/activate, entre na sua conta e digite o código.
+
+Pronto! Nas próximas vezes, abra pelo atalho "Twitch Miner" na Área de Trabalho.
+
+DICAS
+-----
+- Para minerar sempre que ligar o PC: Configurações > "Iniciar com o Windows".
+- O programa se atualiza pelo próprio painel (Configurações > Atualizações).
+- Deu algum problema? Rode o "Instalar.bat" de novo: ele repara a instalação.
+- Não mova a pasta depois de instalar. Se mover, rode o "Instalar.bat" de novo
+  para refazer os atalhos.

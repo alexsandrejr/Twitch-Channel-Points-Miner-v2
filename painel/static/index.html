@@ -1,0 +1,683 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Twitch Miner — Painel</title>
+<style>
+  :root {
+    --bg: #0e0e10; --panel: #18181b; --panel2: #1f1f23; --line: #2f2f35;
+    --text: #efeff1; --muted: #adadb8; --accent: #9147ff; --accent2: #772ce8;
+    --ok: #00c96b; --warn: #f5a623; --bad: #ff4f5e; --radius: 10px;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--text); font: 14px/1.45 "Segoe UI", system-ui, sans-serif; }
+  a { color: #bf94ff; }
+  header { display: flex; align-items: center; gap: 16px; padding: 14px 24px; background: var(--panel); border-bottom: 1px solid var(--line); position: sticky; top: 0; z-index: 5; flex-wrap: wrap; }
+  header h1 { font-size: 17px; margin: 0; display: flex; align-items: center; gap: 10px; }
+  header h1 .logo { width: 28px; height: 28px; border-radius: 7px; background: var(--accent); display: grid; place-items: center; font-weight: 800; }
+  .pill { display: inline-flex; align-items: center; gap: 7px; padding: 4px 11px; border-radius: 99px; background: var(--panel2); border: 1px solid var(--line); font-size: 13px; color: var(--muted); }
+  .pill .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--muted); }
+  .pill.on { color: var(--text); } .pill.on .dot { background: var(--ok); box-shadow: 0 0 8px var(--ok); }
+  .spacer { flex: 1; }
+  nav { display: flex; gap: 4px; padding: 0 24px; background: var(--panel); border-bottom: 1px solid var(--line); overflow-x: auto; }
+  nav button { background: none; border: 0; color: var(--muted); padding: 12px 14px; font: inherit; font-weight: 600; cursor: pointer; border-bottom: 2px solid transparent; white-space: nowrap; }
+  nav button.active { color: var(--text); border-bottom-color: var(--accent); }
+  main { max-width: 1100px; margin: 0 auto; padding: 22px 24px 110px; }
+  .tab { display: none; } .tab.active { display: block; }
+  .card { background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius); padding: 18px 20px; margin-bottom: 18px; }
+  .card h2 { margin: 0 0 4px; font-size: 15px; }
+  .card > p.sub { margin: 0 0 14px; color: var(--muted); }
+  .btn { background: var(--panel2); color: var(--text); border: 1px solid var(--line); border-radius: 7px; padding: 8px 14px; font: inherit; font-weight: 600; cursor: pointer; }
+  .btn:hover { border-color: #4a4a52; }
+  .btn.primary { background: var(--accent); border-color: var(--accent); } .btn.primary:hover { background: var(--accent2); }
+  .btn.danger { color: var(--bad); }
+  .btn.small { padding: 4px 9px; font-size: 13px; }
+  .btn:disabled { opacity: .45; cursor: default; }
+  .stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 12px; margin-bottom: 18px; }
+  .stat { background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius); padding: 14px 16px; }
+  .stat .label { color: var(--muted); font-size: 12px; text-transform: uppercase; letter-spacing: .04em; }
+  .stat .value { font-size: 22px; font-weight: 700; margin-top: 2px; font-variant-numeric: tabular-nums; }
+  .banner { border-radius: var(--radius); padding: 16px 20px; margin-bottom: 18px; display: flex; gap: 16px; align-items: center; flex-wrap: wrap; }
+  .banner.login { background: linear-gradient(135deg, #3b1f73, #1f1f23); border: 1px solid var(--accent); }
+  .banner.info { background: var(--panel); border: 1px dashed #4a4a52; }
+  .banner.update { background: var(--panel); border: 1px solid var(--ok); }
+  .changes { margin: 10px 0 0; padding-left: 18px; color: var(--muted); max-height: 220px; overflow-y: auto; }
+  .changes li { margin: 3px 0; } .changes .date { font-variant-numeric: tabular-nums; margin-right: 6px; }
+  .tag.ok { background: #00c96b1f; color: var(--ok); }
+  .banner .code { font: 700 30px/1 Consolas, monospace; letter-spacing: .18em; background: #0008; padding: 10px 16px; border-radius: 8px; }
+  table { width: 100%; border-collapse: collapse; }
+  th, td { text-align: left; padding: 9px 10px; border-bottom: 1px solid var(--line); }
+  th { color: var(--muted); font-weight: 600; font-size: 12px; text-transform: uppercase; letter-spacing: .04em; }
+  td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
+  .gain { color: var(--ok); } .loss { color: var(--bad); }
+  .tag { display: inline-block; padding: 2px 8px; border-radius: 99px; font-size: 12px; font-weight: 600; background: var(--panel2); color: var(--muted); }
+  .tag.live { background: #eb04001f; color: #ff6b6b; }
+  .history { color: var(--muted); font-size: 12px; }
+  #logbox { background: #09090b; border: 1px solid var(--line); border-radius: 8px; height: 380px; overflow-y: auto; padding: 10px 12px; font: 12.5px/1.55 Consolas, "Cascadia Mono", monospace; white-space: pre-wrap; word-break: break-word; }
+  #logbox .l-err { color: var(--bad); } #logbox .l-ok { color: #6ee7a8; } #logbox .l-panel { color: #bf94ff; } #logbox .l-dim { color: #7a7a85; }
+  .row { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+  .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 14px 22px; }
+  label.field { display: flex; flex-direction: column; gap: 5px; font-weight: 600; }
+  label.field small, .hint { color: var(--muted); font-weight: 400; font-size: 12.5px; }
+  input[type=text], input[type=number], select { background: var(--bg); color: var(--text); border: 1px solid var(--line); border-radius: 7px; padding: 8px 10px; font: inherit; width: 100%; }
+  input:focus, select:focus { outline: 2px solid var(--accent); outline-offset: -1px; }
+  .toggle { display: flex; gap: 12px; align-items: flex-start; padding: 10px 0; border-bottom: 1px solid var(--line); cursor: pointer; }
+  .toggle:last-child { border-bottom: 0; }
+  .toggle input { display: none; }
+  .toggle .sw { flex: none; width: 38px; height: 22px; border-radius: 99px; background: #3a3a40; position: relative; transition: .15s; margin-top: 1px; }
+  .toggle .sw::after { content: ""; position: absolute; top: 3px; left: 3px; width: 16px; height: 16px; border-radius: 50%; background: #fff; transition: .15s; }
+  .toggle input:checked + .sw { background: var(--accent); }
+  .toggle input:checked + .sw::after { left: 19px; }
+  .toggle b { display: block; } .toggle span.d { color: var(--muted); font-size: 12.5px; }
+  .chan { display: grid; grid-template-columns: 34px 1fr auto; gap: 10px; align-items: center; padding: 10px 0; border-bottom: 1px solid var(--line); }
+  .chan .pos { color: var(--muted); font-variant-numeric: tabular-nums; text-align: center; }
+  .chan .name { font-weight: 600; } .chan.disabled .name { color: var(--muted); text-decoration: line-through; }
+  .chan .actions { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; justify-content: flex-end; }
+  .chan .extra { grid-column: 2 / 4; display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 10px; background: var(--panel2); padding: 12px; border-radius: 8px; }
+  .chan select { width: auto; padding: 4px 8px; }
+  .savebar { position: fixed; left: 0; right: 0; bottom: 0; background: #1f1f23f2; border-top: 1px solid var(--accent); padding: 12px 24px; display: none; align-items: center; gap: 12px; z-index: 10; backdrop-filter: blur(6px); }
+  .savebar.show { display: flex; }
+  #toast { position: fixed; right: 20px; bottom: 80px; display: flex; flex-direction: column; gap: 8px; z-index: 20; }
+  #toast div { background: var(--panel2); border: 1px solid var(--line); border-left: 4px solid var(--accent); padding: 10px 14px; border-radius: 8px; max-width: 380px; box-shadow: 0 6px 20px #0008; }
+  #toast div.err { border-left-color: var(--bad); }
+  .empty { color: var(--muted); padding: 18px 0; text-align: center; }
+  .strategy-desc { background: var(--panel2); border-radius: 8px; padding: 10px 12px; color: var(--muted); margin-top: 8px; }
+  @media (max-width: 640px) { header, nav, main { padding-left: 16px; padding-right: 16px; } .chan { grid-template-columns: 26px 1fr; } .chan .actions { grid-column: 1 / 3; justify-content: flex-start; } .chan .extra { grid-column: 1 / 3; } }
+</style>
+</head>
+<body>
+<header>
+  <h1><span class="logo">⛏</span> Twitch Miner</h1>
+  <span class="pill" id="statePill"><span class="dot"></span><span id="stateText">Parado</span></span>
+  <span class="spacer"></span>
+  <button class="btn primary" id="btnStart">▶ Iniciar</button>
+  <button class="btn" id="btnRestart" hidden>↻ Reiniciar</button>
+  <button class="btn danger" id="btnStop" hidden>■ Parar</button>
+</header>
+<nav>
+  <button data-tab="dash" class="active">Painel</button>
+  <button data-tab="channels">Canais</button>
+  <button data-tab="bets">Apostas</button>
+  <button data-tab="settings">Configurações</button>
+</nav>
+
+<main>
+  <!-- PAINEL -->
+  <section class="tab active" id="tab-dash">
+    <div id="loginBanner" class="banner login" hidden>
+      <div style="flex:1;min-width:240px">
+        <b style="font-size:16px">Faça login na Twitch</b><br>
+        Abra <a href="https://www.twitch.tv/activate" target="_blank" rel="noopener">twitch.tv/activate</a>, entre com sua conta e digite o código ao lado. O código expira em alguns minutos.
+      </div>
+      <span class="code" id="loginCode"></span>
+      <button class="btn" id="btnCopyCode">Copiar código</button>
+      <a class="btn primary" href="https://www.twitch.tv/activate" target="_blank" rel="noopener" style="text-decoration:none">Abrir página</a>
+    </div>
+    <div id="setupBanner" class="banner info" hidden></div>
+    <div id="updateBanner" class="banner update" hidden>
+      <div style="flex:1;min-width:240px">
+        <b style="font-size:15px">🆕 Atualização disponível</b><br>
+        <span class="hint" id="updateText"></span>
+        <ul class="changes" id="updateChanges" hidden></ul>
+      </div>
+      <button class="btn" id="btnUpdateChanges">Ver novidades</button>
+      <button class="btn primary" id="btnUpdate">Atualizar agora</button>
+    </div>
+
+    <div class="stats">
+      <div class="stat"><div class="label">Tempo rodando</div><div class="value" id="stUptime">—</div></div>
+      <div class="stat"><div class="label">Canais ao vivo</div><div class="value" id="stOnline">—</div></div>
+      <div class="stat"><div class="label">Ganho na sessão</div><div class="value gain" id="stGained">—</div></div>
+      <div class="stat"><div class="label">Pontos totais</div><div class="value" id="stTotal">—</div></div>
+    </div>
+
+    <div class="card">
+      <div class="row" style="margin-bottom:10px">
+        <h2 style="flex:1">Canais</h2>
+        <a id="analyticsLink" class="btn small" target="_blank" rel="noopener" hidden style="text-decoration:none">📈 Abrir gráficos</a>
+      </div>
+      <div style="overflow-x:auto">
+        <table>
+          <thead><tr><th>#</th><th>Canal</th><th>Status</th><th class="num">Pontos</th><th class="num">Ganho na sessão</th><th>Origem dos pontos</th></tr></thead>
+          <tbody id="chanTable"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="row" style="margin-bottom:10px">
+        <h2 style="flex:1">Logs ao vivo</h2>
+        <input type="text" id="logFilter" placeholder="Filtrar..." style="width:200px">
+        <label class="row hint" style="gap:6px"><input type="checkbox" id="logFollow" checked> rolar automaticamente</label>
+        <button class="btn small" id="btnClearLog">Limpar</button>
+      </div>
+      <div id="logbox"></div>
+    </div>
+  </section>
+
+  <!-- CANAIS -->
+  <section class="tab" id="tab-channels">
+    <div class="card">
+      <h2>Adicionar canais</h2>
+      <p class="sub">Digite o nome do canal ou cole o link (ex.: <code>gaules</code> ou <code>twitch.tv/gaules</code>). Pode colar vários separados por vírgula, espaço ou linha.</p>
+      <div class="row">
+        <input type="text" id="addInput" placeholder="nome do canal" style="flex:1;min-width:200px">
+        <button class="btn primary" id="btnAdd">Adicionar</button>
+      </div>
+    </div>
+    <div class="card">
+      <h2>Seus canais</h2>
+      <p class="sub">A ordem define a prioridade. A Twitch só conta pontos de <b>2 canais assistidos ao mesmo tempo</b>, então os de cima são preferidos (veja a prioridade em Configurações).</p>
+      <div id="chanList"></div>
+    </div>
+  </section>
+
+  <!-- APOSTAS -->
+  <section class="tab" id="tab-bets">
+    <div class="card">
+      <label class="toggle"><input type="checkbox" data-bind="defaults.make_predictions"><span class="sw"></span>
+        <div><b>Fazer apostas automaticamente (previsões)</b><span class="d">Vale para todos os canais, exceto os que tiverem uma configuração própria na aba Canais. Apostar pode fazer você <b>perder</b> pontos.</span></div></label>
+    </div>
+    <div class="card">
+      <h2>Estratégia</h2>
+      <p class="sub">Como o miner escolhe em qual opção apostar.</p>
+      <label class="field">Estratégia<select data-bind="defaults.bet.strategy" id="strategySelect"></select></label>
+      <div class="strategy-desc" id="strategyDesc"></div>
+      <div class="grid" style="margin-top:14px" id="gapField">
+        <label class="field">Diferença mínima entre opções (%)<input type="number" min="0" max="100" data-bind="defaults.bet.percentage_gap"><small>Só para a estratégia Inteligente: se a opção mais votada tiver esta vantagem em % de pessoas, segue a maioria; senão, vai na maior odd.</small></label>
+      </div>
+    </div>
+    <div class="card">
+      <h2>Quanto apostar</h2>
+      <div class="grid">
+        <label class="field">Porcentagem dos seus pontos (%)<input type="number" min="1" max="100" data-bind="defaults.bet.percentage"><small>Ex.: 5 = aposta 5% dos pontos que você tem no canal.</small></label>
+        <label class="field">Máximo por aposta<input type="number" min="1" data-bind="defaults.bet.max_points"><small>Nunca aposta mais que isso, mesmo que a % dê mais.</small></label>
+        <label class="field">Só apostar se eu tiver pelo menos<input type="number" min="0" data-bind="defaults.bet.minimum_points"><small>0 = sem mínimo.</small></label>
+      </div>
+      <label class="toggle" style="margin-top:8px"><input type="checkbox" data-bind="defaults.bet.stealth_mode"><span class="sw"></span>
+        <div><b>Modo discreto</b><span class="d">Se sua aposta fosse a maior do canal, aposta um pouco menos que a maior para não aparecer no topo.</span></div></label>
+    </div>
+    <div class="card">
+      <h2>Momento da aposta</h2>
+      <div class="grid">
+        <label class="field">Quando apostar<select data-bind="defaults.bet.delay_mode" id="delayModeSelect"></select></label>
+        <label class="field">Valor<input type="number" step="0.1" min="0" data-bind="defaults.bet.delay"><small id="delayHint"></small></label>
+      </div>
+    </div>
+    <div class="card">
+      <label class="toggle"><input type="checkbox" data-bind="defaults.bet.filter.enabled"><span class="sw"></span>
+        <div><b>Filtro: só apostar quando…</b><span class="d">Pula a aposta se a condição abaixo não for verdadeira. Ex.: só apostar se tiver pelo menos 50 participantes.</span></div></label>
+      <div class="grid" style="margin-top:8px">
+        <label class="field">Medida<select data-bind="defaults.bet.filter.by" id="filterBySelect"></select></label>
+        <label class="field">Condição<select data-bind="defaults.bet.filter.where" id="filterWhereSelect"></select></label>
+        <label class="field">Valor<input type="number" step="any" data-bind="defaults.bet.filter.value"></label>
+      </div>
+    </div>
+  </section>
+
+  <!-- CONFIGURAÇÕES -->
+  <section class="tab" id="tab-settings">
+    <div class="card">
+      <h2>Conta</h2>
+      <p class="sub">O login é feito pelo código em twitch.tv/activate na primeira vez que o miner iniciar. Sua senha nunca é pedida.</p>
+      <div class="grid">
+        <label class="field">Seu usuário da Twitch<input type="text" data-bind="username" placeholder="seu_usuario" autocomplete="off"></label>
+        <div class="field"><span>Situação</span><div class="row"><span id="loginState" class="tag">—</span><button class="btn small" id="btnLogout">Sair / refazer login</button></div></div>
+      </div>
+    </div>
+    <div class="card">
+      <h2>O que o miner faz</h2>
+      <label class="toggle"><input type="checkbox" data-bind="defaults.watch_streak"><span class="sw"></span><div><b>Pegar sequência de exibição (watch streak)</b><span class="d">Dá prioridade a quem acabou de entrar ao vivo para ganhar o bônus de sequência.</span></div></label>
+      <label class="toggle"><input type="checkbox" data-bind="defaults.follow_raid"><span class="sw"></span><div><b>Seguir raids</b><span class="d">Entra nas raids para ganhar os pontos extras.</span></div></label>
+      <label class="toggle"><input type="checkbox" data-bind="defaults.claim_drops"><span class="sw"></span><div><b>Resgatar drops</b><span class="d">Acompanha e resgata drops de jogos das campanhas ativas.</span></div></label>
+      <label class="toggle"><input type="checkbox" data-bind="claim_drops_startup"><span class="sw"></span><div><b>Resgatar drops pendentes ao iniciar</b><span class="d">Resgata o que já estiver disponível no seu inventário.</span></div></label>
+      <label class="toggle"><input type="checkbox" data-bind="defaults.claim_moments"><span class="sw"></span><div><b>Resgatar momentos</b><span class="d">Coleta os "Moments" da Twitch quando aparecem.</span></div></label>
+      <label class="toggle"><input type="checkbox" data-bind="defaults.community_goals"><span class="sw"></span><div><b>Contribuir com metas da comunidade</b><span class="d">Gasta pontos nas metas do canal. Deixe desligado se quiser acumular.</span></div></label>
+      <div class="grid" style="margin-top:12px">
+        <label class="field">Entrar no chat<select data-bind="defaults.chat" id="chatSelect"></select><small>Estar no chat ajuda a contar o tempo assistido.</small></label>
+      </div>
+    </div>
+    <div class="card">
+      <h2>Prioridade</h2>
+      <p class="sub">Como escolher os 2 canais assistidos quando há mais de 2 ao vivo. A primeira regra que se aplicar vence.</p>
+      <div class="grid" id="prioFields"></div>
+    </div>
+    <div class="card">
+      <h2>Canais que eu sigo</h2>
+      <label class="toggle"><input type="checkbox" data-bind="followers"><span class="sw"></span><div><b>Incluir todos os canais que eu sigo</b><span class="d">Além da sua lista, minera em todos os canais que sua conta segue.</span></div></label>
+    </div>
+    <div class="card">
+      <h2>Windows e funcionamento</h2>
+      <label class="toggle"><input type="checkbox" id="autostartToggle"><span class="sw"></span><div><b>Iniciar com o Windows</b><span class="d">Abre o painel escondido em segundo plano quando o PC liga. Aplica na hora, sem precisar salvar.</span></div></label>
+      <label class="toggle"><input type="checkbox" data-bind="start_miner_with_panel"><span class="sw"></span><div><b>Iniciar o miner junto com o painel</b><span class="d">Começa a minerar assim que o painel abrir (necessário para minerar automaticamente ao ligar o PC).</span></div></label>
+      <label class="toggle"><input type="checkbox" data-bind="auto_restart"><span class="sw"></span><div><b>Reiniciar se travar</b><span class="d">Se o miner fechar com erro, tenta de novo após 30 segundos.</span></div></label>
+      <label class="toggle"><input type="checkbox" data-bind="simple_logs"><span class="sw"></span><div><b>Logs simplificados</b><span class="d">Mensagens mais curtas e fáceis de ler.</span></div></label>
+      <label class="toggle"><input type="checkbox" data-bind="enable_analytics"><span class="sw"></span><div><b>Gráficos de pontos (analytics)</b><span class="d">Guarda o histórico e abre uma página de gráficos. Usa mais memória.</span></div></label>
+      <div class="grid" style="margin-top:8px"><label class="field">Porta dos gráficos<input type="number" min="1024" max="65535" data-bind="analytics_port"></label></div>
+    </div>
+    <div class="card">
+      <h2>Atualizações</h2>
+      <p class="sub">O painel procura novas versões do miner e do próprio painel no GitHub a cada 6 horas. Seus canais, configurações e login são mantidos.</p>
+      <div class="row">
+        <span>Versão instalada: <b id="verCurrent">—</b></span>
+        <span id="verState" class="tag">—</span>
+        <span class="hint" id="verChecked"></span>
+        <span class="spacer"></span>
+        <button class="btn small" id="btnCheckUpdate">Procurar atualizações</button>
+      </div>
+      <p class="hint" id="verError" style="color:var(--bad)" hidden></p>
+      <label class="toggle" style="margin-top:8px"><input type="checkbox" data-bind="auto_update"><span class="sw"></span><div><b>Atualizar automaticamente</b><span class="d">Instala as novas versões assim que forem encontradas e reinicia o miner sozinho.</span></div></label>
+    </div>
+    <div class="card">
+      <h2>Painel</h2>
+      <p class="sub">O painel continua rodando em segundo plano mesmo se você fechar esta aba. Para abrir de novo, use o atalho <b>Iniciar Painel</b> na pasta do miner.</p>
+      <button class="btn danger" id="btnShutdown">Encerrar painel e miner</button>
+    </div>
+  </section>
+</main>
+
+<div class="savebar" id="saveBar">
+  <span style="flex:1">Você tem alterações não salvas.</span>
+  <button class="btn" id="btnDiscard">Descartar</button>
+  <button class="btn primary" id="btnSave">Salvar</button>
+</div>
+<div id="toast"></div>
+
+<script>
+const L = {
+  strategy: {
+    SMART: ["Inteligente (recomendada)", "Se a maioria das pessoas escolheu uma opção com vantagem maior que a diferença mínima, segue a maioria. Caso contrário, aposta na opção com a maior odd (maior retorno)."],
+    MOST_VOTED: ["Mais votada", "Aposta na opção escolhida pelo maior número de pessoas."],
+    HIGH_ODDS: ["Maior odd", "Aposta na opção que paga mais. Ganha mais quando acerta, mas acerta menos."],
+    PERCENTAGE: ["Maior porcentagem", "Aposta na opção com a maior porcentagem calculada a partir das odds."],
+    SMART_MONEY: ["Seguir os grandes apostadores", "Aposta na opção que recebeu a maior aposta individual."],
+  },
+  priority: {
+    STREAK: "Sequência de exibição (watch streak)", DROPS: "Drops em andamento", ORDER: "Ordem da minha lista",
+    SUBSCRIBED: "Canais em que sou inscrito", POINTS_ASCENDING: "Quem tenho menos pontos", POINTS_DESCENDING: "Quem tenho mais pontos",
+  },
+  chat: { ONLINE: "Só quando o canal está ao vivo", ALWAYS: "Sempre", NEVER: "Nunca", OFFLINE: "Só quando está offline" },
+  delay: {
+    FROM_END: ["Segundos antes de fechar", "Ex.: 6 = aposta faltando 6 segundos (vê mais votos antes de decidir)."],
+    FROM_START: ["Segundos depois de abrir", "Ex.: 20 = aposta 20 segundos após a previsão abrir."],
+    PERCENTAGE: ["Fração do tempo", "Valor entre 0 e 1. Ex.: 0.8 = aposta quando 80% do tempo tiver passado."],
+  },
+  filter: {
+    TOTAL_USERS: "Total de participantes", TOTAL_POINTS: "Total de pontos apostados",
+    PERCENTAGE_USERS: "% de pessoas na opção escolhida", ODDS_PERCENTAGE: "% da odd da opção escolhida",
+    ODDS: "Odd da opção escolhida", TOP_POINTS: "Maior aposta individual na opção",
+  },
+  cond: { GT: "maior que", LT: "menor que", GTE: "maior ou igual a", LTE: "menor ou igual a" },
+  history: { WATCH: "assistindo", CLAIM: "bônus", WATCH_STREAK: "sequência", RAID: "raid", PREDICTION: "apostas", REFUND: "reembolso", WIN: "vitória" },
+};
+for (let i = 1; i <= 8; i++) {
+  const side = i === 1 ? " (azul)" : i === 2 ? " (rosa)" : "";
+  L.strategy["NUMBER_" + i] = [`Sempre a opção ${i}${side}`, `Sempre aposta na ${i}ª opção da previsão.`];
+}
+
+let cfg = null, saved = null, options = null, status = {}, logSeq = 0, bootId = null;
+const openExtras = new Set();
+const $ = (s, el = document) => el.querySelector(s);
+const $$ = (s, el = document) => [...el.querySelectorAll(s)];
+const clone = o => JSON.parse(JSON.stringify(o));
+const fmt = n => (n == null ? "—" : Number(n).toLocaleString("pt-BR"));
+
+async function api(path, body) {
+  const opts = body === undefined ? {} : { method: "POST", headers: { "Content-Type": "application/json", "X-Painel": "1" }, body: JSON.stringify(body) };
+  const res = await fetch(path, opts);
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok || data.ok === false) throw new Error(data.error || `Erro ${res.status}`);
+  return data;
+}
+
+function toast(msg, isErr) {
+  const d = document.createElement("div");
+  d.textContent = msg;
+  if (isErr) d.className = "err";
+  $("#toast").append(d);
+  setTimeout(() => d.remove(), isErr ? 7000 : 4000);
+}
+
+function el(tag, attrs = {}, ...children) {
+  const e = document.createElement(tag);
+  for (const [k, v] of Object.entries(attrs)) {
+    if (k === "class") e.className = v;
+    else if (k.startsWith("on")) e.addEventListener(k.slice(2), v);
+    else if (v !== false && v != null) e.setAttribute(k, v === true ? "" : v);
+  }
+  for (const c of children) if (c != null) e.append(c);
+  return e;
+}
+
+function fillSelect(sel, values, labelFn) {
+  sel.innerHTML = "";
+  for (const v of values) sel.append(el("option", { value: v }, labelFn(v)));
+}
+
+// ---------- Ligação entre campos e config ----------
+const getPath = (obj, path) => path.split(".").reduce((o, k) => (o == null ? o : o[k]), obj);
+function setPath(obj, path, value) {
+  const keys = path.split("."); const last = keys.pop();
+  const target = keys.reduce((o, k) => (o[k] ??= {}), obj);
+  target[last] = value;
+}
+
+function readInput(input) {
+  if (input.type === "checkbox") return input.checked;
+  if (input.type === "number") return input.value === "" ? "" : Number(input.value);
+  return input.value;
+}
+
+function renderBindings() {
+  for (const input of $$("[data-bind]")) {
+    const v = getPath(cfg, input.dataset.bind);
+    if (input.type === "checkbox") input.checked = !!v; else input.value = v ?? "";
+  }
+  $$("#prioFields select").forEach((s, i) => (s.value = cfg.priority[i] || ""));
+  updateHints();
+}
+
+function markDirty() {
+  $("#saveBar").classList.toggle("show", JSON.stringify(cfg) !== JSON.stringify(saved));
+}
+
+function updateHints() {
+  const s = cfg.defaults.bet.strategy;
+  $("#strategyDesc").textContent = (L.strategy[s] || ["", ""])[1];
+  $("#gapField").hidden = s !== "SMART";
+  $("#delayHint").textContent = (L.delay[cfg.defaults.bet.delay_mode] || ["", ""])[1];
+}
+
+document.addEventListener("input", e => {
+  const input = e.target.closest("[data-bind]");
+  if (!input || !cfg) return;
+  setPath(cfg, input.dataset.bind, readInput(input));
+  updateHints();
+  markDirty();
+});
+
+// ---------- Canais ----------
+function parseChannels(text) {
+  return text.split(/[\s,;]+/).map(t => t.trim().replace(/^@/, ""))
+    .map(t => { const m = t.match(/twitch\.tv\/([a-zA-Z0-9_]+)/i); return (m ? m[1] : t).toLowerCase(); })
+    .filter(t => /^[a-z0-9_]{2,25}$/.test(t));
+}
+
+function addChannels() {
+  const names = parseChannels($("#addInput").value);
+  if (!names.length) return toast("Nenhum nome de canal válido.", true);
+  let added = 0;
+  for (const n of names) {
+    if (cfg.streamers.some(s => s.username === n)) continue;
+    cfg.streamers.push({ username: n, enabled: true, settings: {} });
+    added++;
+  }
+  $("#addInput").value = "";
+  renderChannels(); markDirty();
+  toast(added ? `${added} canal(is) adicionado(s). Lembre de salvar.` : "Esses canais já estão na lista.");
+}
+
+function renderChannels() {
+  const list = $("#chanList");
+  list.innerHTML = "";
+  if (!cfg.streamers.length) {
+    list.append(el("div", { class: "empty" }, "Nenhum canal ainda. Adicione acima."));
+    return;
+  }
+  cfg.streamers.forEach((s, i) => {
+    s.settings ??= {};
+    const custom = s.settings.make_predictions !== undefined || s.settings.bet;
+    const move = d => { const j = i + d; [cfg.streamers[i], cfg.streamers[j]] = [cfg.streamers[j], cfg.streamers[i]]; renderChannels(); markDirty(); };
+    const pred = el("select", { title: "Apostas neste canal", onchange: e => {
+      const v = e.target.value;
+      if (v === "") delete s.settings.make_predictions; else s.settings.make_predictions = v === "1";
+      renderChannels(); markDirty();
+    } },
+      el("option", { value: "" }, "Apostas: padrão"),
+      el("option", { value: "1" }, "Apostas: sim"),
+      el("option", { value: "0" }, "Apostas: não"));
+    pred.value = s.settings.make_predictions === undefined ? "" : s.settings.make_predictions ? "1" : "0";
+
+    const row = el("div", { class: "chan" + (s.enabled ? "" : " disabled") },
+      el("span", { class: "pos" }, String(i + 1)),
+      el("div", {}, el("a", { class: "name", href: `https://www.twitch.tv/${s.username}`, target: "_blank", rel: "noopener" }, s.username),
+        custom ? el("span", { class: "tag", style: "margin-left:8px" }, "config. própria") : null),
+      el("div", { class: "actions" },
+        pred,
+        el("button", { class: "btn small", title: "Ajustes de aposta só para este canal", onclick: () => { const x = row.querySelector(".extra"); x.hidden = !x.hidden; x.hidden ? openExtras.delete(s.username) : openExtras.add(s.username); } }, "⚙"),
+        el("button", { class: "btn small", onclick: () => { s.enabled = !s.enabled; renderChannels(); markDirty(); } }, s.enabled ? "Pausar" : "Ativar"),
+        el("button", { class: "btn small", disabled: i === 0, onclick: () => move(-1), title: "Subir" }, "↑"),
+        el("button", { class: "btn small", disabled: i === cfg.streamers.length - 1, onclick: () => move(1), title: "Descer" }, "↓"),
+        el("button", { class: "btn small danger", onclick: () => { cfg.streamers.splice(i, 1); renderChannels(); markDirty(); }, title: "Remover" }, "✕")),
+    );
+    const bet = s.settings.bet || {};
+    const setBet = (k, v) => {
+      s.settings.bet ??= {};
+      if (v === "" || v == null) delete s.settings.bet[k]; else s.settings.bet[k] = v;
+      if (!Object.keys(s.settings.bet).length) delete s.settings.bet;
+      markDirty();
+    };
+    const strat = el("select", { onchange: e => { setBet("strategy", e.target.value); renderChannels(); } }, el("option", { value: "" }, "Padrão"));
+    for (const k of options.strategies) strat.append(el("option", { value: k }, L.strategy[k][0]));
+    strat.value = bet.strategy || "";
+    const num = (k, ph) => el("input", { type: "number", min: 1, placeholder: ph, value: bet[k] ?? "", oninput: e => setBet(k, e.target.value === "" ? "" : Number(e.target.value)) });
+    row.append(el("div", { class: "extra", hidden: !openExtras.has(s.username) },
+      el("label", { class: "field" }, "Estratégia", strat),
+      el("label", { class: "field" }, "% dos pontos", num("percentage", `padrão: ${cfg.defaults.bet.percentage}`)),
+      el("label", { class: "field" }, "Máximo por aposta", num("max_points", `padrão: ${cfg.defaults.bet.max_points}`)),
+      el("small", { class: "hint", style: "grid-column:1/-1" }, "Campos vazios usam o padrão da aba Apostas.")));
+    list.append(row);
+  });
+}
+
+// ---------- Painel ----------
+function renderStatus() {
+  const s = status;
+  $("#statePill").classList.toggle("on", s.running);
+  $("#stateText").textContent = s.running ? (s.login_code ? "Aguardando login" : s.channels?.ready ? "Minerando" : "Iniciando...") : "Parado";
+  $("#btnStart").hidden = s.running;
+  $("#btnStop").hidden = $("#btnRestart").hidden = !s.running;
+
+  $("#loginBanner").hidden = !s.login_code;
+  if (s.login_code) $("#loginCode").textContent = s.login_code;
+
+  const setup = $("#setupBanner");
+  let msg = "";
+  if (cfg && !cfg.username) msg = "👋 Primeiro passo: informe seu usuário da Twitch na aba Configurações e salve.";
+  else if (cfg && !cfg.streamers.length && !cfg.followers) msg = "📺 Agora adicione os canais que você quer minerar na aba Canais.";
+  else if (!s.running && !s.logged_in) msg = "🔑 Clique em Iniciar. Na primeira vez vai aparecer um código para você fazer login em twitch.tv/activate.";
+  setup.hidden = !msg; setup.textContent = msg;
+
+  $("#loginState").textContent = s.logged_in ? "Conectado" : "Sem login";
+  $("#loginState").className = "tag" + (s.logged_in ? " live" : "");
+  $("#autostartToggle").checked = !!s.autostart;
+  const a = $("#analyticsLink"); a.hidden = !(s.running && s.analytics_url); if (s.analytics_url) a.href = s.analytics_url;
+  renderUpdate(s.update || {});
+
+  const rows = s.channels?.streamers || [];
+  $("#stUptime").textContent = s.started_at ? duration(Date.now() / 1000 - s.started_at) : "—";
+  $("#stOnline").textContent = s.running && rows.length ? `${rows.filter(r => r.online).length} / ${rows.length}` : "—";
+  const gained = rows.reduce((t, r) => t + r.gained, 0);
+  $("#stGained").textContent = s.channels?.ready ? (gained >= 0 ? "+" : "") + fmt(gained) : "—";
+  $("#stGained").className = "value " + (gained < 0 ? "loss" : "gain");
+  $("#stTotal").textContent = rows.length ? fmt(rows.reduce((t, r) => t + r.points, 0)) : "—";
+
+  const tb = $("#chanTable"); tb.innerHTML = "";
+  if (!rows.length) {
+    tb.append(el("tr", {}, el("td", { colspan: 6, class: "empty" }, s.running ? "Carregando canais..." : "Inicie o miner para ver os pontos em tempo real.")));
+    return;
+  }
+  rows.slice().sort((a, b) => b.online - a.online).forEach((r, i) => {
+    const hist = Object.entries(r.history || {}).filter(([, h]) => h.counter)
+      .map(([k, h]) => `${L.history[k] || k.toLowerCase()}: ${h.amount >= 0 ? "+" : ""}${fmt(h.amount)}`).join(" · ");
+    tb.append(el("tr", {},
+      el("td", {}, String(i + 1)),
+      el("td", {}, el("a", { href: `https://www.twitch.tv/${r.username}`, target: "_blank", rel: "noopener" }, r.username)),
+      el("td", {}, r.online ? el("span", { class: "tag live" }, "● AO VIVO") : el("span", { class: "tag" }, "offline"), r.game ? el("div", { class: "history" }, r.game) : null),
+      el("td", { class: "num" }, fmt(r.points)),
+      el("td", { class: "num " + (r.gained < 0 ? "loss" : r.gained > 0 ? "gain" : "") }, (r.gained > 0 ? "+" : "") + fmt(r.gained)),
+      el("td", { class: "history" }, hist || "—")));
+  });
+}
+
+let changesKey = "";
+function renderUpdate(u) {
+  const busy = u.applying || u.checking;
+  $("#updateBanner").hidden = !(u.available || u.applying);
+  const newer = u.latest && u.latest !== u.current ? ` → ${u.latest}` : "";
+  const count = u.behind ? ` · ${u.behind} ${u.behind === 1 ? "novidade" : "novidades"}`
+    : u.files ? ` · ${u.files} ${u.files === 1 ? "arquivo atualizado" : "arquivos atualizados"}` : "";
+  $("#updateText").textContent = u.applying
+    ? "Atualizando... o miner vai reiniciar sozinho em instantes. Acompanhe nos logs abaixo."
+    : `Versão ${u.current || "?"}${newer}${count}`;
+  $("#btnUpdate").disabled = $("#btnCheckUpdate").disabled = busy;
+  $("#btnUpdateChanges").hidden = !u.changes?.length;
+
+  const key = JSON.stringify(u.changes || []);
+  if (key !== changesKey) {
+    changesKey = key;
+    const ul = $("#updateChanges"); ul.innerHTML = "";
+    for (const c of u.changes || []) ul.append(el("li", {}, el("span", { class: "date" }, c.date), c.message));
+    if (u.behind > (u.changes || []).length) ul.append(el("li", {}, "..."));
+  }
+
+  $("#verCurrent").textContent = u.current || "—";
+  const st = $("#verState");
+  st.textContent = u.applying ? "Atualizando..." : u.checking ? "Verificando..." : u.available ? "Atualização disponível" : u.last_check && !u.error ? "Atualizado" : "Não verificado";
+  st.className = "tag" + (u.available || u.applying ? " live" : u.last_check && !u.error ? " ok" : "");
+  $("#verChecked").textContent = u.last_check ? `verificado há ${duration(Date.now() / 1000 - u.last_check)}` : "";
+  $("#verError").hidden = !u.error; $("#verError").textContent = u.error ? "Erro: " + u.error : "";
+}
+
+function duration(sec) {
+  sec = Math.max(0, Math.floor(sec));
+  const d = Math.floor(sec / 86400), h = Math.floor(sec % 86400 / 3600), m = Math.floor(sec % 3600 / 60);
+  return d ? `${d}d ${h}h` : h ? `${h}h ${m}min` : `${m}min ${sec % 60}s`;
+}
+
+function logClass(t) {
+  if (t.startsWith("[painel]")) return "l-panel";
+  if (/error|exception|traceback|lose|lost|perdeu/i.test(t)) return "l-err";
+  if (/\bwin\b|won|gained|\+\d|is online|claimed/i.test(t)) return "l-ok";
+  if (/offline/i.test(t)) return "l-dim";
+  return "";
+}
+
+function applyLogFilter() {
+  const q = $("#logFilter").value.toLowerCase();
+  for (const d of $("#logbox").children) d.hidden = q && !d.textContent.toLowerCase().includes(q);
+}
+
+async function pollLogs() {
+  try {
+    const lines = await api(`/api/logs?since=${logSeq}`);
+    if (lines.length) {
+      const box = $("#logbox"), q = $("#logFilter").value.toLowerCase();
+      for (const { id, text } of lines) {
+        logSeq = id;
+        const d = el("div", { class: logClass(text) }, text);
+        if (q && !text.toLowerCase().includes(q)) d.hidden = true;
+        box.append(d);
+      }
+      while (box.children.length > 2000) box.firstChild.remove();
+      if ($("#logFollow").checked) box.scrollTop = box.scrollHeight;
+    }
+  } catch {}
+  setTimeout(pollLogs, 1500);
+}
+
+async function pollStatus() {
+  try {
+    status = await api("/api/status");
+    // O painel reiniciou (ex.: depois de uma atualização): recarrega para usar a página nova
+    if (bootId && status.boot_id !== bootId) return location.reload();
+    bootId = status.boot_id;
+    renderStatus();
+  }
+  catch { $("#stateText").textContent = "Painel desconectado"; $("#statePill").classList.remove("on"); }
+  setTimeout(pollStatus, 3000);
+}
+
+// ---------- Ações ----------
+async function action(path, okMsg) {
+  try { await api(path, {}); if (okMsg) toast(okMsg); setTimeout(async () => { status = await api("/api/status"); renderStatus(); }, 400); }
+  catch (e) { toast(e.message, true); }
+}
+
+$("#btnStart").onclick = async () => {
+  if ($("#saveBar").classList.contains("show")) await save();
+  action("/api/start", "Miner iniciado.");
+};
+$("#btnStop").onclick = () => action("/api/stop", "Encerrando o miner (pode levar alguns segundos)...");
+$("#btnRestart").onclick = () => action("/api/restart", "Reiniciando o miner...");
+$("#btnLogout").onclick = () => { if (confirm("Apagar o login salvo? Na próxima vez será preciso digitar o código em twitch.tv/activate de novo.")) action("/api/logout", "Login removido."); };
+$("#btnShutdown").onclick = async () => {
+  if (!confirm("Encerrar o painel e parar o miner?")) return;
+  await api("/api/shutdown", {}).catch(() => {});
+  document.body.innerHTML = '<main><div class="card"><h2>Painel encerrado</h2><p class="sub">Você pode fechar esta aba. Para abrir de novo, use o atalho “Iniciar Painel”.</p></div></main>';
+};
+$("#btnUpdate").onclick = () => {
+  if (confirm("Atualizar o miner agora? Se ele estiver rodando, será parado e iniciado de novo automaticamente.")) action("/api/update/apply", "Instalando atualização...");
+};
+$("#btnUpdateChanges").onclick = () => { const ul = $("#updateChanges"); ul.hidden = !ul.hidden; $("#btnUpdateChanges").textContent = ul.hidden ? "Ver novidades" : "Esconder"; };
+$("#btnCheckUpdate").onclick = async () => {
+  $("#btnCheckUpdate").disabled = true; $("#verState").textContent = "Verificando...";
+  try {
+    const r = await api("/api/update/check", {});
+    toast(r.update.available ? "Há uma atualização disponível!" : "Você já está na versão mais recente.");
+  } catch (e) { toast(e.message, true); }
+  status = await api("/api/status").catch(() => status); renderStatus();
+};
+$("#btnCopyCode").onclick = () => { navigator.clipboard.writeText($("#loginCode").textContent); toast("Código copiado."); };
+$("#btnClearLog").onclick = () => { $("#logbox").innerHTML = ""; };
+$("#logFilter").oninput = applyLogFilter;
+$("#btnAdd").onclick = addChannels;
+$("#addInput").addEventListener("keydown", e => { if (e.key === "Enter") addChannels(); });
+$("#autostartToggle").onchange = async e => {
+  try { const r = await api("/api/autostart", { enabled: e.target.checked }); toast(r.autostart ? "O painel vai iniciar com o Windows." : "Inicialização com o Windows desativada."); }
+  catch (err) { toast(err.message, true); e.target.checked = !e.target.checked; }
+};
+
+async function save() {
+  try {
+    const r = await api("/api/config", cfg);
+    cfg = r.config; saved = clone(cfg);
+    renderBindings(); renderChannels(); markDirty(); renderStatus();
+    if (r.running) toast("Salvo. Clique em Reiniciar para o miner usar as novas configurações.");
+    else toast("Configurações salvas.");
+  } catch (e) { toast(e.message, true); }
+}
+$("#btnSave").onclick = save;
+$("#btnDiscard").onclick = () => { cfg = clone(saved); renderBindings(); renderChannels(); markDirty(); };
+window.addEventListener("beforeunload", e => { if ($("#saveBar").classList.contains("show")) e.preventDefault(); });
+
+for (const b of $$("nav button")) b.onclick = () => {
+  $$("nav button").forEach(x => x.classList.toggle("active", x === b));
+  $$(".tab").forEach(t => t.classList.toggle("active", t.id === "tab-" + b.dataset.tab));
+};
+
+async function init() {
+  options = await api("/api/options");
+  cfg = await api("/api/config"); saved = clone(cfg);
+  fillSelect($("#strategySelect"), options.strategies, k => L.strategy[k][0]);
+  fillSelect($("#delayModeSelect"), options.delay_modes, k => L.delay[k][0]);
+  fillSelect($("#filterBySelect"), options.filter_keys, k => L.filter[k]);
+  fillSelect($("#filterWhereSelect"), options.conditions, k => L.cond[k]);
+  fillSelect($("#chatSelect"), options.chat_modes, k => L.chat[k]);
+  const prio = $("#prioFields");
+  for (let i = 0; i < 3; i++) {
+    const sel = el("select", { onchange: () => {
+      cfg.priority = $$("#prioFields select").map(s => s.value).filter(Boolean);
+      markDirty();
+    } }, el("option", { value: "" }, "(nenhuma)"));
+    for (const p of options.priorities) sel.append(el("option", { value: p }, L.priority[p]));
+    prio.append(el("label", { class: "field" }, `${i + 1}ª regra`, sel));
+  }
+  renderBindings(); renderChannels();
+  pollStatus(); pollLogs();
+}
+init();
+</script>
+</body>
+</html>
