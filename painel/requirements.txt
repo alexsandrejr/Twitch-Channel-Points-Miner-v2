@@ -1,0 +1,2 @@
+# Dependências só do painel (as do miner ficam no requirements.txt da raiz)
+pystray

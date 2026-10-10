@@ -18,6 +18,8 @@ Você não precisa instalar nada antes. Basta ter Windows 10 ou 11 e internet.
      twitch.tv/activate, entre na sua conta e digite o código.
 
 Pronto! Nas próximas vezes, abra pelo atalho "Twitch Miner" na Área de Trabalho.
+Com o programa rodando, também aparece um ícone de picareta perto do relógio:
+clique nele para abrir o painel (se não aparecer, procure na setinha ^ ao lado).
 
 DICAS
 -----

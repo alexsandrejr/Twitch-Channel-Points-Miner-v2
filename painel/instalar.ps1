@@ -86,7 +86,8 @@ try {
     }
 
     Write-Step 3 'Bibliotecas do miner (pode demorar alguns minutos)'
-    $packages = Get-Content (Join-Path $Root 'requirements.txt') | ForEach-Object { $_.Trim() } | Where-Object {
+    $requirements = (Join-Path $Root 'requirements.txt'), (Join-Path $Painel 'requirements.txt')
+    $packages = Get-Content $requirements | ForEach-Object { $_.Trim() } | Where-Object {
         $_ -and -not $_.StartsWith('#') -and ($DevRequirements -notcontains ($_ -split '[<>=!~\[; ]')[0])
     }
     Invoke-Python (@('-m', 'pip', 'install', '--no-warn-script-location', '--disable-pip-version-check') + $packages) `

@@ -46,11 +46,17 @@ def parse_version(text):
     return match.group(1) if match else None
 
 
+REQUIREMENTS_FILES = ("requirements.txt", "painel/requirements.txt")
+
+
 def read_requirements():
-    try:
-        return (ROOT / "requirements.txt").read_text(encoding="utf-8")
-    except OSError:
-        return ""
+    lines = []
+    for name in REQUIREMENTS_FILES:
+        try:
+            lines += (ROOT / name).read_text(encoding="utf-8").splitlines()
+        except OSError:
+            pass
+    return lines
 
 
 def is_protected(path):
@@ -108,7 +114,7 @@ def git(*args, timeout=60):
 
 def install_requirements(python):
     packages = []
-    for line in read_requirements().splitlines():
+    for line in read_requirements():
         line = line.strip()
         name = re.split(r"[<>=!~\[; ]", line, maxsplit=1)[0]
         if line and not line.startswith("#") and name not in DEV_REQUIREMENTS:

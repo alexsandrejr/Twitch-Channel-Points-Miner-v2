@@ -19,7 +19,7 @@ Precisa apenas de **Windows 10 ou 11 (64 bits)** e internet.
 3. Espere terminar (alguns minutos). O painel abre sozinho no navegador.
 4. No painel: informe seu usuário da Twitch em **Configurações**, adicione os canais em **Canais**, salve e clique em **Iniciar**. Na primeira vez, digite o código que aparecer em [twitch.tv/activate](https://www.twitch.tv/activate).
 
-Nas próximas vezes, abra pelo atalho **Twitch Miner** na Área de Trabalho. Para minerar sempre que ligar o PC, ative **Configurações → Iniciar com o Windows**.
+Nas próximas vezes, abra pelo atalho **Twitch Miner** na Área de Trabalho ou clique no ícone de picareta ⛏ perto do relógio do Windows. Não precisa decorar nenhum endereço. Para minerar sempre que ligar o PC, ative **Configurações → Iniciar com o Windows**.
 
 ## Dúvidas comuns
 

@@ -222,7 +222,7 @@ def run_update():
             miner.stop(wait=True)
         try:
             changed = updater.apply()
-            if "requirements.txt" in changed:
+            if {"requirements.txt", "painel/requirements.txt"} & set(changed):
                 miner.log("[painel] Atualizando dependências (pode levar alguns minutos)...")
                 install_requirements(venv_exe("python.exe"))
             miner.log(f"[painel] Atualização instalada (miner versão {updater.state['current']}).")
@@ -249,7 +249,48 @@ def restart_panel(start_miner):
         args.append("--iniciar-miner")
     subprocess.Popen(args, cwd=PAINEL_DIR, creationflags=getattr(subprocess, "DETACHED_PROCESS", 0))
     time.sleep(1)  # dá tempo de a página receber o último status
+    exit_panel()
+
+
+tray = None
+
+
+def exit_panel():
+    """Encerra o processo do painel, tirando antes o ícone da bandeja."""
+    if tray is not None:
+        tray.stop()
     os._exit(0)
+
+
+def quit_all():
+    miner.stop(wait=True)
+    exit_panel()
+
+
+def run_tray():
+    """Ícone perto do relógio: um clique abre o painel; o botão direito mostra o menu."""
+    global tray
+    try:
+        import pystray
+        from PIL import Image
+    except ImportError:
+        print("pystray não instalado: ícone na bandeja desativado")
+        return
+
+    def refresh_title():
+        while True:
+            tray.title = "Twitch Miner - " + ("minerando" if miner.running else "parado")
+            time.sleep(5)
+
+    menu = pystray.Menu(
+        pystray.MenuItem("Abrir painel", lambda: webbrowser.open(URL), default=True),
+        pystray.Menu.SEPARATOR,
+        # Em outra thread para não travar o menu enquanto o miner encerra
+        pystray.MenuItem("Encerrar Twitch Miner", lambda: threading.Thread(target=quit_all).start()),
+    )
+    tray = pystray.Icon("twitch-miner", Image.open(PAINEL_DIR / "static" / "icone.ico"), "Twitch Miner", menu)
+    threading.Thread(target=refresh_title, daemon=True).start()
+    tray.run()
 
 
 def update_loop():
@@ -412,9 +453,8 @@ def update_apply():
 @app.post("/api/shutdown")
 def shutdown():
     def finish():
-        miner.stop(wait=True)
         time.sleep(0.5)  # deixa a resposta chegar ao navegador
-        os._exit(0)
+        quit_all()
 
     threading.Thread(target=finish, daemon=True).start()
     return jsonify(ok=True)
@@ -428,6 +468,7 @@ def main():
         except ConfigError as exc:
             miner.log(f"[painel] {exc}")
     threading.Thread(target=update_loop, name="Atualizações", daemon=True).start()
+    threading.Thread(target=run_tray, name="Bandeja", daemon=True).start()
     if not AUTOSTART:
         threading.Timer(1.0, webbrowser.open, args=(URL,)).start()
     app.run(host=HOST, port=PORT, threaded=True, use_reloader=False)

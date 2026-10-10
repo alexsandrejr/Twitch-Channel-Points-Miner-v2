@@ -271,7 +271,7 @@
     </div>
     <div class="card">
       <h2>Painel</h2>
-      <p class="sub">O painel continua rodando em segundo plano mesmo se você fechar esta aba. Para abrir de novo, use o atalho <b>Iniciar Painel</b> na pasta do miner.</p>
+      <p class="sub">O painel continua rodando em segundo plano mesmo se você fechar esta aba. Para voltar aqui, clique no ícone <b>⛏</b> perto do relógio do Windows ou no atalho <b>Twitch Miner</b> da Área de Trabalho. Não precisa decorar nenhum endereço.</p>
       <button class="btn danger" id="btnShutdown">Encerrar painel e miner</button>
     </div>
   </section>
@@ -615,7 +615,7 @@ $("#btnLogout").onclick = () => { if (confirm("Apagar o login salvo? Na próxima
 $("#btnShutdown").onclick = async () => {
   if (!confirm("Encerrar o painel e parar o miner?")) return;
   await api("/api/shutdown", {}).catch(() => {});
-  document.body.innerHTML = '<main><div class="card"><h2>Painel encerrado</h2><p class="sub">Você pode fechar esta aba. Para abrir de novo, use o atalho “Iniciar Painel”.</p></div></main>';
+  document.body.innerHTML = '<main><div class="card"><h2>Painel encerrado</h2><p class="sub">Você pode fechar esta aba. Para abrir de novo, use o atalho “Twitch Miner” na Área de Trabalho.</p></div></main>';
 };
 $("#btnUpdate").onclick = () => {
   if (confirm("Atualizar o miner agora? Se ele estiver rodando, será parado e iniciado de novo automaticamente.")) action("/api/update/apply", "Instalando atualização...");
