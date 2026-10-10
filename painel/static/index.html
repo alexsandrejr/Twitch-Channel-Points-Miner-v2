@@ -11,6 +11,7 @@
     --ok: #00c96b; --warn: #f5a623; --bad: #ff4f5e; --radius: 10px;
   }
   * { box-sizing: border-box; }
+  [hidden] { display: none !important; } /* senão .banner/.extra com display próprio ignoram o hidden */
   body { margin: 0; background: var(--bg); color: var(--text); font: 14px/1.45 "Segoe UI", system-ui, sans-serif; }
   a { color: #bf94ff; }
   header { display: flex; align-items: center; gap: 16px; padding: 14px 24px; background: var(--panel); border-bottom: 1px solid var(--line); position: sticky; top: 0; z-index: 5; flex-wrap: wrap; }
