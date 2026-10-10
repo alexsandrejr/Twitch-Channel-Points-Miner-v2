@@ -90,7 +90,12 @@ try {
     $packages = Get-Content $requirements | ForEach-Object { $_.Trim() } | Where-Object {
         $_ -and -not $_.StartsWith('#') -and ($DevRequirements -notcontains ($_ -split '[<>=!~\[; ]')[0])
     }
-    Invoke-Python (@('-m', 'pip', 'install', '--no-warn-script-location', '--disable-pip-version-check') + $packages) `
+    $pipInstall = @('-m', 'pip', 'install', '--no-warn-script-location', '--disable-pip-version-check')
+    # Algumas bibliotecas (ex.: millify) só existem como código-fonte e precisam do setuptools para
+    # serem montadas. O Python portátil ignora o ambiente isolado que o pip cria para isso, então
+    # o setuptools vai no próprio Python e a montagem usa --no-build-isolation.
+    Invoke-Python ($pipInstall + @('setuptools', 'wheel')) 'Falha ao instalar o setuptools. Verifique sua internet e tente de novo.'
+    Invoke-Python ($pipInstall + @('--no-build-isolation') + $packages) `
         'Falha ao instalar as bibliotecas. Verifique sua internet e tente de novo.'
 
     Write-Step 4 'Atalhos'

@@ -121,8 +121,15 @@ def install_requirements(python):
             packages.append(line)
     if not packages:
         return
+    # Pacotes só com código-fonte (ex.: millify) precisam do setuptools; o Python portátil do
+    # instalador ignora o ambiente isolado de montagem do pip, daí o --no-build-isolation
+    pip_install(python, "setuptools", "wheel")
+    pip_install(python, "--no-build-isolation", *packages)
+
+
+def pip_install(python, *args):
     result = subprocess.run(
-        [python, "-m", "pip", "install", "-q", *packages],
+        [python, "-m", "pip", "install", "-q", "--disable-pip-version-check", *args],
         cwd=ROOT,
         capture_output=True,
         text=True,
