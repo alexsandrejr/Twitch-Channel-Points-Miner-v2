@@ -1,0 +1,34 @@
+# Traz todo dia as correções do repositório original (rdavydov) para este fork.
+# Se der conflito (ou se o original alterar arquivos de .github/workflows, que o
+# GITHUB_TOKEN não pode enviar), o job falha e o GitHub avisa por e-mail: nesse
+# caso use o botão "Sync fork" na página do repositório ou resolva com o git.
+name: Sincronizar com o original
+
+on:
+  schedule:
+    - cron: "17 6 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Juntar as mudanças do rdavydov/master
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git remote add upstream https://github.com/rdavydov/Twitch-Channel-Points-Miner-v2.git
+          git fetch upstream master
+          if git merge-base --is-ancestor upstream/master HEAD; then
+            echo "Já está em dia com o original."
+            exit 0
+          fi
+          git merge --no-edit upstream/master
+          git push origin HEAD:master
