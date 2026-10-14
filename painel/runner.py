@@ -161,7 +161,8 @@ def main():
         logger_settings=LoggerSettings(
             save=True,
             console_level=logging.INFO,
-            file_level=logging.DEBUG,
+            # DEBUG gerava ~55 MB por dia; INFO tem tudo o que o painel mostra
+            file_level=logging.INFO,
             emoji=True,
             less=cfg["simple_logs"],
             colored=False,

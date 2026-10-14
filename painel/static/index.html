@@ -168,7 +168,11 @@
       </div>
     </div>
     <div class="card">
-      <h2>Seus canais</h2>
+      <div class="row" style="margin-bottom:4px">
+        <h2 style="flex:1;margin:0">Seus canais</h2>
+        <button class="btn small" id="btnImportChannels" title="Adicionar canais de um arquivo .txt (um por linha)">📂 Importar lista</button>
+        <button class="btn small" id="btnExportChannels" title="Salvar a lista de canais num arquivo .txt">💾 Exportar lista</button>
+      </div>
       <p class="sub">A ordem define a prioridade. A Twitch só conta pontos de <b>2 canais assistidos ao mesmo tempo</b>, então os de cima são preferidos (veja a prioridade em Configurações).</p>
       <div id="chanList"></div>
     </div>
@@ -256,6 +260,14 @@
       <label class="toggle"><input type="checkbox" data-bind="simple_logs"><span class="sw"></span><div><b>Logs simplificados</b><span class="d">Mensagens mais curtas e fáceis de ler.</span></div></label>
       <label class="toggle"><input type="checkbox" data-bind="enable_analytics"><span class="sw"></span><div><b>Gráficos de pontos (analytics)</b><span class="d">Guarda o histórico e abre uma página de gráficos. Usa mais memória.</span></div></label>
       <div class="grid" style="margin-top:8px"><label class="field">Porta dos gráficos<input type="number" min="1024" max="65535" data-bind="analytics_port"></label></div>
+    </div>
+    <div class="card">
+      <h2>Backup</h2>
+      <p class="sub">Salve todas as configurações (canais, apostas, prioridades e opções) num arquivo, para guardar ou levar para outro computador. O login da Twitch <b>não</b> vai no arquivo.</p>
+      <div class="row">
+        <button class="btn" id="btnExportConfig">💾 Exportar configurações</button>
+        <button class="btn" id="btnImportConfig">📂 Importar configurações</button>
+      </div>
     </div>
     <div class="card">
       <h2>Atualizações</h2>
@@ -379,8 +391,12 @@ function renderBindings() {
   updateHints();
 }
 
+// JSON com as chaves em ordem: o servidor devolve a config em ordem alfabética
+const stable = o => JSON.stringify(o, (k, v) =>
+  v && typeof v === "object" && !Array.isArray(v) ? Object.fromEntries(Object.entries(v).sort(([a], [b]) => (a < b ? -1 : a > b))) : v);
+
 function markDirty() {
-  $("#saveBar").classList.toggle("show", JSON.stringify(cfg) !== JSON.stringify(saved));
+  $("#saveBar").classList.toggle("show", stable(cfg) !== stable(saved));
 }
 
 function updateHints() {
@@ -405,18 +421,101 @@ function parseChannels(text) {
     .filter(t => /^[a-z0-9_]{2,25}$/.test(t));
 }
 
-function addChannels() {
-  const names = parseChannels($("#addInput").value);
-  if (!names.length) return toast("Nenhum nome de canal válido.", true);
+function addNames(names) {
   let added = 0;
   for (const n of names) {
     if (cfg.streamers.some(s => s.username === n)) continue;
     cfg.streamers.push({ username: n, enabled: true, settings: {} });
     added++;
   }
-  $("#addInput").value = "";
   renderChannels(); markDirty();
+  return added;
+}
+
+function addChannels() {
+  const names = parseChannels($("#addInput").value);
+  if (!names.length) return toast("Nenhum nome de canal válido.", true);
+  const added = addNames(names);
+  $("#addInput").value = "";
   toast(added ? `${added} canal(is) adicionado(s). Lembre de salvar.` : "Esses canais já estão na lista.");
+}
+
+// ---------- Exportar / importar ----------
+const BACKUP_APP = "twitch-miner-painel";
+const today = () => new Date().toLocaleDateString("sv"); // AAAA-MM-DD no horário local
+
+function download(name, text, type) {
+  const a = el("a", { href: URL.createObjectURL(new Blob([text], { type })), download: name });
+  document.body.append(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+}
+
+function pickFile(accept) {
+  return new Promise(resolve => {
+    const input = el("input", { type: "file", accept });
+    input.onchange = () => resolve(input.files[0]);
+    input.click();
+  });
+}
+
+function deepMerge(base, extra) {
+  const out = clone(base);
+  const isObj = v => v && typeof v === "object" && !Array.isArray(v);
+  for (const [k, v] of Object.entries(extra || {})) out[k] = isObj(v) && isObj(out[k]) ? deepMerge(out[k], v) : v;
+  return out;
+}
+
+// Aceita o arquivo de backup do painel ou um config.json puro
+function readBackup(text) {
+  let data;
+  try { data = JSON.parse(text); } catch { return null; }
+  const c = data?.app === BACKUP_APP ? data.config : data;
+  return c && typeof c === "object" && Array.isArray(c.streamers) ? c : null;
+}
+
+function cleanStreamers(list) {
+  return list.filter(s => typeof s?.username === "string")
+    .map(s => ({ username: s.username.trim().toLowerCase(), enabled: s.enabled !== false, settings: s.settings || {} }))
+    .filter(s => /^[a-z0-9_]{2,25}$/.test(s.username));
+}
+
+function exportConfig() {
+  const data = { app: BACKUP_APP, version: 1, exported_at: new Date().toISOString(), config: cfg };
+  download(`twitch-miner-backup-${today()}.json`, JSON.stringify(data, null, 2), "application/json");
+  toast("Backup exportado. O login da Twitch não vai no arquivo.");
+}
+
+async function importConfig() {
+  const file = await pickFile(".json");
+  if (!file) return;
+  const imported = readBackup(await file.text());
+  if (!imported) return toast("Este arquivo não é um backup do Twitch Miner.", true);
+  const next = deepMerge(cfg, imported);
+  next.streamers = cleanStreamers(imported.streamers);
+  const theirs = String(imported.username || "").toLowerCase();
+  if (!theirs || (cfg.username && theirs !== cfg.username &&
+      !confirm(`Este backup é da conta "${theirs}".\n\nOK = trocar para "${theirs}"\nCancelar = manter a sua conta "${cfg.username}"`))) {
+    next.username = cfg.username;
+  }
+  cfg = next;
+  renderBindings(); renderChannels(); markDirty();
+  toast(`Backup carregado com ${cfg.streamers.length} canal(is). Confira e clique em Salvar.`);
+}
+
+function exportChannels() {
+  if (!cfg.streamers.length) return toast("A lista de canais está vazia.", true);
+  download(`twitch-miner-canais-${today()}.txt`, cfg.streamers.map(s => s.username).join("\r\n") + "\r\n", "text/plain");
+}
+
+async function importChannels() {
+  const file = await pickFile(".txt,.csv,.json");
+  if (!file) return;
+  const text = await file.text();
+  const backup = readBackup(text);
+  const names = backup ? cleanStreamers(backup.streamers).map(s => s.username) : parseChannels(text);
+  if (!names.length) return toast("Nenhum canal encontrado no arquivo.", true);
+  const added = addNames(names);
+  toast(added ? `${added} canal(is) importado(s). Lembre de salvar.` : "Todos os canais do arquivo já estão na lista.");
 }
 
 function renderChannels() {
@@ -634,6 +733,10 @@ $("#btnCopyCode").onclick = () => { navigator.clipboard.writeText($("#loginCode"
 $("#btnClearLog").onclick = () => { $("#logbox").innerHTML = ""; };
 $("#logFilter").oninput = applyLogFilter;
 $("#btnAdd").onclick = addChannels;
+$("#btnExportChannels").onclick = exportChannels;
+$("#btnImportChannels").onclick = importChannels;
+$("#btnExportConfig").onclick = exportConfig;
+$("#btnImportConfig").onclick = importConfig;
 $("#addInput").addEventListener("keydown", e => { if (e.key === "Enter") addChannels(); });
 $("#autostartToggle").onchange = async e => {
   try { const r = await api("/api/autostart", { enabled: e.target.checked }); toast(r.autostart ? "O painel vai iniciar com o Windows." : "Inicialização com o Windows desativada."); }
